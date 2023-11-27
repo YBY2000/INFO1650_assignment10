@@ -89,12 +89,24 @@ const ForecastPage = ({ navigation }) => {
           return acc;
         }, {});
 
-        setForecastData(dailyData);
+        // Get the current date
+        const currentDate = new Date().toISOString().split('T')[0];
+
+        // Filter out the next four days including the current day
+        const filteredData = Object.keys(dailyData)
+          .filter((date) => date >= currentDate)
+          .slice(0, 5)
+          .reduce((acc, date) => {
+            acc[date] = dailyData[date];
+            return acc;
+          }, {});
+
+        setForecastData(filteredData);
 
         // Process daily temperatures
         const temps = {};
-        Object.keys(dailyData).forEach((date) => {
-          const temperatures = dailyData[date].map((forecast) => forecast.main.temp);
+        Object.keys(filteredData).forEach((date) => {
+          const temperatures = filteredData[date].map((forecast) => forecast.main.temp);
           temps[date] = { min: Math.min(...temperatures), max: Math.max(...temperatures) };
         });
 
