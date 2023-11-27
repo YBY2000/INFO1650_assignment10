@@ -23,40 +23,56 @@ const DailyDetailPage = ({ route }) => {
   const [hourlyForecast, setHourlyForecast] = useState([]);
 
   useEffect(() => {
-    const fetchHourlyForecast = async () => {
-      try {
-        // Replace 'YOUR_API_KEY' with your actual OpenWeatherMap API key
-        const apiKey = '695be21d675c8f2da6036cc5a86747f6';
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/forecast?q=BOSTON&appid=${apiKey}`
-        );
-        const data = await response.json();
-        setHourlyForecast(data.list);
-      } catch (error) {
-        console.error('Error fetching hourly forecast data:', error);
+    // Generate fake hourly data based on the selected date
+    const generateHourlyData = () => {
+      const fakeData = [];
+      const selectedDate = new Date(day);
+      // Set the starting time for the fake data
+      selectedDate.setHours(0, 0, 0, 0);
+
+      // Generate hourly data for 24 hours
+      for (let i = 0; i < 24; i++) {
+        const hourlyData = {
+          dt_txt: selectedDate.toISOString(),
+          main: {
+            temp: Math.random() * 7 - 3,
+          },
+          weather: [
+            {
+              main: 'Clear', // You can customize this based on your requirements
+            },
+          ],
+        };
+
+        fakeData.push(hourlyData);
+
+        // Increment the selected date by 1 hour
+        selectedDate.setHours(selectedDate.getHours() + 1);
       }
+
+      setHourlyForecast(fakeData);
     };
 
-    fetchHourlyForecast();
-  }, []);
+    generateHourlyData();
+  }, [day]);
 
   return (
-    <Container>
+    <View>
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-        {day.dt_txt}'s Hourly Forecast
+        {day}'s Hourly Forecast
       </Text>
       <FlatList
         data={hourlyForecast}
-        keyExtractor={(item) => item.dt}
+        keyExtractor={(item) => item.dt_txt}
         renderItem={({ item }) => (
-          <HourlyForecastItem
-            hour={item.dt_txt}
-            temperature={item.main.temp}
-            condition={item.weather[0].main}
-          />
+          <View style={{ marginVertical: 10 }}>
+            <Text>{item.dt_txt}</Text>
+            <Text>{item.main.temp.toFixed(2)}°C</Text>
+            <Text>{item.weather[0].main}</Text>
+          </View>
         )}
       />
-    </Container>
+    </View>
   );
 };
 

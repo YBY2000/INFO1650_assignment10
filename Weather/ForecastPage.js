@@ -78,22 +78,26 @@ const ForecastPage = ({ navigation }) => {
           throw new Error('Unexpected API response format');
         }
 
-        const dailyData = data.list.filter((item, index) => index % 8 === 0); // Select every 8th item
+        // Extract daily data using the date as the key
+        const dailyData = data.list.reduce((acc, item) => {
+          const date = item.dt_txt.split(' ')[0];
+          if (!acc[date]) {
+            acc[date] = [item];
+          } else {
+            acc[date].push(item);
+          }
+          return acc;
+        }, {});
 
         setForecastData(dailyData);
 
         // Process daily temperatures
         const temps = {};
-        dailyData.forEach((forecast) => {
-          const date = forecast.dt_txt.split(' ')[0];
-          const temp = forecast.main.temp;
-          if (!temps[date]) {
-            temps[date] = { min: temp, max: temp };
-          } else {
-            temps[date].min = Math.min(temps[date].min, temp);
-            temps[date].max = Math.max(temps[date].max, temp);
-          }
+        Object.keys(dailyData).forEach((date) => {
+          const temperatures = dailyData[date].map((forecast) => forecast.main.temp);
+          temps[date] = { min: Math.min(...temperatures), max: Math.max(...temperatures) };
         });
+
         setDailyTemps(temps);
       } catch (error) {
         console.error('Error fetching weather data:', error);
@@ -108,27 +112,36 @@ const ForecastPage = ({ navigation }) => {
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
         5-Day Forecast
       </Text>
-      {forecastData.map((forecast, index) => (
-        <ForecastCard
-          key={index}
-          onPress={() => navigation.navigate('DailyDetail', { day: forecast })}
-        >
-          <DayText>{forecast.dt_txt}</DayText>
-          {dailyTemps[forecast.dt_txt.split(' ')[0]] ? (
-            <>
-              <HighLowText>
-                High: {kelvinToCelsius(dailyTemps[forecast.dt_txt.split(' ')[0]].max).toFixed(2)}°C
-              </HighLowText>
-              <HighLowText>
-                Low: {kelvinToCelsius(dailyTemps[forecast.dt_txt.split(' ')[0]].min).toFixed(2)}°C
-              </HighLowText>
-            </>
-          ) : (
-            <Text>Loading...</Text>
-          )}
-          <WeatherLogo source={getWeatherImage(forecast.weather[0].main)} />
-        </ForecastCard>
-      ))}
+      {Object.keys(forecastData).map((date) => {
+        const forecast = forecastData[date][0]; // Take the first item of the day
+        return (
+          <ForecastCard
+            key={date}
+            onPress={() => {
+              console.log('Full Forecast Object:', forecast); // Log the full object
+              const hourlyData = forecastData[date];
+              console.log('Selected Day:', date);
+              console.log('Hourly Data:', hourlyData);
+              navigation.navigate('DailyDetail', { day: date, hourlyData });
+            }}
+          >
+            <DayText>{date}</DayText>
+            {dailyTemps[date] ? (
+              <>
+                <HighLowText>
+                  High: {kelvinToCelsius(dailyTemps[date].max).toFixed(2)}°C
+                </HighLowText>
+                <HighLowText>
+                  Low: {kelvinToCelsius(dailyTemps[date].min).toFixed(2)}°C
+                </HighLowText>
+              </>
+            ) : (
+              <Text>Loading...</Text>
+            )}
+            <WeatherLogo source={getWeatherImage(forecast?.weather[0]?.main)} />
+          </ForecastCard>
+        );
+      })}
     </Container>
   );
 };
