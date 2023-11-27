@@ -12,7 +12,7 @@ const App = () => {
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Forecast">
         <Stack.Screen name="Forecast" component={ForecastPage} />
-        <Stack.Screen name="DayDetail" component={DailyDetailPage} />
+        <Stack.Screen name="DailyDetail" component={DailyDetailPage} />
       </Stack.Navigator>
     </NavigationContainer>
   );

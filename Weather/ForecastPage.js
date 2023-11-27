@@ -1,11 +1,7 @@
 // ForecastPage.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import styled from 'styled-components/native';
-import sunnyIcon from './assets/sunny.png';
-import snowyIcon from './assets/snowy.png';
-import cloudyIcon from './assets/cloudy.png';
-import rainyIcon from './assets/rainy.png';
 
 const Container = styled.View`
   flex: 1;
@@ -28,61 +24,113 @@ const DayText = styled.Text`
   font-weight: bold;
   margin-bottom: 10px;
 `;
+
 const WeatherLogo = styled.Image`
-  width: 50,
-  height: 50,
+  width: 25;
+  height: 25;
 `;
 
 const HighLowText = styled.Text`
   font-size: 12px;
   margin-bottom: 5px;
 `;
-const getWeatherImage = (condition) => {
-    switch (condition) {
-      case 'sunny':
-        return sunnyIcon;
-      case 'snowy':
-        return snowyIcon;
-      case 'cloudy':
-        return cloudyIcon;
-      case 'rainy':
-        return rainyIcon;
-      default:
-        return null; // You can provide a default image or handle it as needed
-    }
-  };
 
-
-const ForecastScreen = ({ navigation , condition }) => {
-    return (
-        <Container>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-                5-Day Forecast
-            </Text>
-            {/* Fake data for demonstration */}
-            {fakeForecastData.map((day, index) => (
-                <ForecastCard
-                    key={index}
-                    onPress={() => navigation.navigate('DayDetail', { day })}
-                >
-                    <DayText>{day.day}</DayText>
-                    <HighLowText>High: {day.highTemp}°C</HighLowText>
-                    <HighLowText>Low: {day.lowTemp}°C</HighLowText>
-                    {/* Add image based on weather condition */}
-                    {/* <Image source={...} /> */}
-                    <Image source={getWeatherImage(day.condition)} style={{ width: 20, height: 20 }} />
-                </ForecastCard>
-            ))}
-        </Container>
-    );
+const kelvinToCelsius = (temperature) => {
+  return temperature - 273.15;
 };
 
-const fakeForecastData = [
-    { day: 'Monday', highTemp: 28, lowTemp: 18, condition: 'sunny' },
-    { day: 'Tuesday', highTemp: 25, lowTemp: 15, condition: 'cloudy' },
-    { day: 'Wednesday', highTemp: 22, lowTemp: 12, condition: 'rainy' },
-    { day: 'Thursday', highTemp: 20, lowTemp: 10, condition: 'snowy' },
-    { day: 'Friday', highTemp: 23, lowTemp: 14, condition: 'sunny' },
-];
+const getWeatherImage = (condition) => {
+  switch (condition) {
+    case 'Clear':
+      return require('./assets/sunny.png');
+    case 'Snow':
+      return require('./assets/snowy.png');
+    case 'Clouds':
+      return require('./assets/cloudy.png');
+    case 'Rain':
+      return require('./assets/rainy.png');
+    default:
+      return require('./assets/unknown.png');
+  }
+};
 
-export default ForecastScreen;
+const ForecastPage = ({ navigation }) => {
+  const [forecastData, setForecastData] = useState([]);
+  const [dailyTemps, setDailyTemps] = useState({});
+
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      try {
+        // Replace 'YOUR_API_KEY' with your actual OpenWeatherMap API key
+        const apiKey = '695be21d675c8f2da6036cc5a86747f6';
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?q=BOSTON&appid=${apiKey}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Received data:', data);
+
+        if (!data || !data.list) {
+          throw new Error('Unexpected API response format');
+        }
+
+        const dailyData = data.list.filter((item, index) => index % 8 === 0); // Select every 8th item
+
+        setForecastData(dailyData);
+
+        // Process daily temperatures
+        const temps = {};
+        dailyData.forEach((forecast) => {
+          const date = forecast.dt_txt.split(' ')[0];
+          const temp = forecast.main.temp;
+          if (!temps[date]) {
+            temps[date] = { min: temp, max: temp };
+          } else {
+            temps[date].min = Math.min(temps[date].min, temp);
+            temps[date].max = Math.max(temps[date].max, temp);
+          }
+        });
+        setDailyTemps(temps);
+      } catch (error) {
+        console.error('Error fetching weather data:', error);
+      }
+    };
+
+    fetchWeatherData();
+  }, []);
+
+  return (
+    <Container>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
+        5-Day Forecast
+      </Text>
+      {forecastData.map((forecast, index) => (
+        <ForecastCard
+          key={index}
+          onPress={() => navigation.navigate('DailyDetail', { day: forecast })}
+        >
+          <DayText>{forecast.dt_txt}</DayText>
+          {dailyTemps[forecast.dt_txt.split(' ')[0]] ? (
+            <>
+              <HighLowText>
+                High: {kelvinToCelsius(dailyTemps[forecast.dt_txt.split(' ')[0]].max).toFixed(2)}°C
+              </HighLowText>
+              <HighLowText>
+                Low: {kelvinToCelsius(dailyTemps[forecast.dt_txt.split(' ')[0]].min).toFixed(2)}°C
+              </HighLowText>
+            </>
+          ) : (
+            <Text>Loading...</Text>
+          )}
+          <WeatherLogo source={getWeatherImage(forecast.weather[0].main)} />
+        </ForecastCard>
+      ))}
+    </Container>
+  );
+};
+
+export default ForecastPage;
